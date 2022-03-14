@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lopinhbest/GolangGRPC/greet/greetpb"
+	"github.com/lopinhbest/GolangGRPC/calculator/calculatorpb"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -11,18 +11,19 @@ import (
 
 type server struct{}
 
-func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) {
-	fmt.Printf("Greet function was invoked with %v\n", req)
-	firstName := req.GetGreeting().GetFirstName()
-	result := "Hello " + firstName
-	res := &greetpb.GreetResponse{
-		Result: result,
+func (*server) Sum(ctx context.Context, req *calculatorpb.SumRequest) (*calculatorpb.SumResponse, error) {
+	fmt.Printf("Received Sum RPC: %v\n", req)
+	firstNumber := req.FirstNumber
+	secondNumber := req.SecondNumber
+	sum := firstNumber + secondNumber
+	res := &calculatorpb.SumResponse{
+		SumResult: sum,
 	}
 	return res, nil
 }
 
 func main() {
-	fmt.Println("Hello World")
+	fmt.Println("Calculator Server")
 
 	// listen on port 50051
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
@@ -34,7 +35,7 @@ func main() {
 
 	// create a new gRPC server
 	s := grpc.NewServer()
-	greetpb.RegisterGreetServiceServer(s, &server{})
+	calculatorpb.RegisterCalculatorServiceServer(s, &server{})
 
 	//display eror message
 	if err := s.Serve(lis); err != nil {
