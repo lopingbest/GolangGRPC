@@ -20,15 +20,38 @@ message GreetManyTimesRequest {
   Greeting greeting = 1;
 }
 
-message GreetManyTimesResponse {
-  Greeting result = 1;
+message GreetManytimesResponse {
+  string result = 1;
+}
+
+message LongGreetRequest {
+  Greeting greeting = 1;
+}
+
+message LongGreetResponse {
+  string result = 1;
+}
+
+message GreetEveryoneRequest {
+  Greeting greeting = 1;
+}
+
+message GreetEveryoneResponse {
+  string result = 1;
+}
+
+message GreetWithDeadlineRequest {
+  Greeting greeting = 1;
+}
+
+message GreetWithDeadlineResponse {
+  string result = 1;
 }
 
 service GreetService{
-  //unary
+  // Unary
   rpc Greet(GreetRequest) returns (GreetResponse) {};
 
-  //server streaming
-  rpc GreetManyTimes(GreetManyTimesRequest) returns (stream GreetManyTimesResponse) {};
-
+  // Server Streaming
+  rpc GreetManyTimes(GreetManyTimesRequest) returns (stream GreetManytimesResponse) {};
 }
