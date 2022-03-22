@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/lopinhbest/GolangGRPC/calculator/calculatorpb"
 	"github.com/lopinhbest/GolangGRPC/greet/greetpb"
 	"google.golang.org/grpc"
 	"log"
@@ -33,6 +34,25 @@ func (*server) GreetManyTimes(req *greetpb.GreetManyTimesRequest, stream greetpb
 		}
 		stream.Send(res)
 		time.Sleep(1000 * time.Millisecond)
+	}
+	return nil
+}
+
+func (*server) PrimeNumberDecomposition(req *calculatorpb.PrimeNumberDecompositionRequest, stream calculatorpb.CalculatorService_PrimeNumberDecompositionServer) error {
+	fmt.Printf("PrimeNumberDecomposition function was invoked with %v\n", req)
+	number := req.GetNumber()
+	divisor := int64(2)
+
+	for number > 1 {
+		if number%divisor == 0 {
+			stream.Send(&calculatorpb.PrimeNumberDecompositionResponse{
+				PrimeFactor: divisor,
+			})
+			number = number / divisor
+		} else {
+			divisor++
+			fmt.Println("Divisor has increased to %v\n", divisor)
+		}
 	}
 	return nil
 }
