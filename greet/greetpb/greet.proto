@@ -37,7 +37,7 @@ message GreetEveryoneRequest {
 }
 
 message GreetEveryoneResponse {
-  Greeting result = 1;
+  string result = 1;
 }
 
 service GreetService{
