@@ -7,6 +7,7 @@ import (
 	"github.com/lopinhbest/GolangGRPC/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"io"
 	"log"
@@ -122,22 +123,30 @@ func (*server) GreetWithDeadline(ctx context.Context, req *greetpb.GreetWithDead
 }
 
 func main() {
-	fmt.Println("Hello World")
+	fmt.Println("Hello world")
 
-	// listen on port 50051
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
-
-	// check error
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// create a new gRPC server
-	s := grpc.NewServer()
+	opts := []grpc.ServerOption{}
+	tls := false
+	if tls {
+		certFile := "ssl/server.crt"
+		keyFile := "ssl/server.pem"
+		creds, sslErr := credentials.NewServerTLSFromFile(certFile, keyFile)
+		if sslErr != nil {
+			log.Fatalf("Failed loading certificates: %v", sslErr)
+			return
+		}
+		opts = append(opts, grpc.Creds(creds))
+	}
+
+	s := grpc.NewServer(opts...)
 	greetpb.RegisterGreetServiceServer(s, &server{})
 
-	//display eror message
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Fatalf("failed to serve: %v", err)
 	}
 }
