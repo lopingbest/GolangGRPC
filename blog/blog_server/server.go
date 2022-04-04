@@ -8,11 +8,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"time"
 )
 
 var collection *mongo.Collection
@@ -27,35 +29,70 @@ type blogItem struct {
 	Title    string             `bson:"title"`
 }
 
+func (*server) CreateBlog(ctx context.Context, req *blogpb.CreateBlogRequest) (*blogpb.CreateBlogResponse, error) {
+	fmt.Println("Create blog request")
+	blog := req.GetBlog()
+
+	data := blogItem{
+		AuthorID: blog.GetAuthorId(),
+		Title:    blog.GetTitle(),
+		Content:  blog.GetContent(),
+	}
+
+	res, err := collection.InsertOne(ctx, data)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Internal error: %v", err),
+		)
+	}
+	oid, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return nil, status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Cannot convert to OID"),
+		)
+	}
+
+	return &blogpb.CreateBlogResponse{
+		Blog: &blogpb.Blog{
+			Id:       oid.Hex(),
+			AuthorId: blog.GetAuthorId(),
+			Title:    blog.GetTitle(),
+			Content:  blog.GetContent(),
+		},
+	}, nil
+
+}
+
 func main() {
 	// if we crash the go code, we get the file name and line number
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	fmt.Println("Connecting to MongoDB")
-	//connect to mongoDB
+	// connect to MongoDB
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	err = client.Connect(ctx)
+	err = client.Connect(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Blog Service Started")
-	collection = client.Database("mydb").Collection("BLOG")
+	collection = client.Database("mydb").Collection("blog")
 
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	opts := []grpc.ServerOption{}
-
+	var opts []grpc.ServerOption
 	s := grpc.NewServer(opts...)
 	blogpb.RegisterBlogServiceServer(s, &server{})
+	// Register reflection service on gRPC server.
+	reflection.Register(s)
 
 	go func() {
 		fmt.Println("Starting Server...")
@@ -70,11 +107,14 @@ func main() {
 
 	// Block until a signal is received
 	<-ch
+	// First we close the connection with MongoDB:
+	fmt.Println("Closing MongoDB Connection")
+	if err := client.Disconnect(context.TODO()); err != nil {
+		log.Fatalf("Error on disconnection with MongoDB : %v", err)
+	}
+
+	// Finally, we stop the server
 	fmt.Println("Stopping the server")
 	s.Stop()
-	fmt.Println("Closing the listener")
-	lis.Close()
-	fmt.Println("Closing MongoDB Connection")
-	client.Disconnect(context.TODO())
 	fmt.Println("End of Program")
 }
